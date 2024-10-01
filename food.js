@@ -1,5 +1,12 @@
 // food.js
 
+// Load the food image
+const foodImage = new Image();
+foodImage.src = './food.png';  // Make sure this path is correct
+
+// Adjust this value to change the size of the food image
+const FOOD_SIZE_RATIO = 0.8;  // Currently set to 50% of CELL_SIZE
+
 export function spawnFood(maze, COLS, ROWS, CELL_SIZE) {
     let x, y;
     do {
@@ -7,22 +14,33 @@ export function spawnFood(maze, COLS, ROWS, CELL_SIZE) {
         y = Math.floor(Math.random() * ROWS) * CELL_SIZE + CELL_SIZE / 2;
     } while (maze[Math.floor(y / CELL_SIZE)] && maze[Math.floor(y / CELL_SIZE)][Math.floor(x / CELL_SIZE)] === 1);
     
-    return { x, y, radius: CELL_SIZE / 4 };
+    const foodSize = CELL_SIZE * FOOD_SIZE_RATIO;
+    return { x, y, width: foodSize, height: foodSize };
 }
 
 export function drawFood(ctx, food) {
-    food.forEach(item => {
-        ctx.beginPath();
-        ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'green';
-        ctx.fill();
-        ctx.closePath();
-    });
+    if (foodImage.complete) {
+        food.forEach(item => {
+            ctx.drawImage(foodImage, item.x - item.width / 2, item.y - item.height / 2, item.width, item.height);
+        });
+    } else {
+        // Fallback to drawing circles if the image hasn't loaded
+        food.forEach(item => {
+            ctx.beginPath();
+            ctx.arc(item.x, item.y, item.width / 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'green';
+            ctx.fill();
+            ctx.closePath();
+        });
+    }
 }
 
 export function checkFoodCollection(player, food, score) {
     for (let i = food.length - 1; i >= 0; i--) {
-        if (Math.hypot(player.x - food[i].x, player.y - food[i].y) < player.radius + food[i].radius) {
+        const dx = player.x - food[i].x;
+        const dy = player.y - food[i].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + food[i].width / 2) {
             food.splice(i, 1);
             score++;
         }

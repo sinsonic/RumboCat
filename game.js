@@ -7,6 +7,7 @@ import { FogOfWar } from './fogOfWar.js';
 import { spawnFood, drawFood, checkFoodCollection } from './food.js';
 import { handleKeyDown, handleKeyUp, updatePlayerMovement } from './controls.js';
 import { initializeCustomControls } from './joystick.js';
+import { Menu } from './menu.js';  // Import the new Menu class
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -21,26 +22,53 @@ const ROWS = Math.floor(canvas.height / CELL_SIZE);
 const COLS = Math.floor(canvas.width / CELL_SIZE);
 const VISIBLE_RADIUS = 5 * CELL_SIZE;
 
-const player = new Player(CELL_SIZE * 1.5, CELL_SIZE * 1.5, CELL_SIZE);
-const fogOfWar = new FogOfWar(canvas, VISIBLE_RADIUS);
+let player, fogOfWar, enemies, food, bullets, score, keys, maze;
+const menu = new Menu();
 
-const enemies = [];
-const food = [];
-let bullets = [];
-let score = 0;
+function initializeGame() {
+    player = new Player(CELL_SIZE * 1.5, CELL_SIZE * 1.5, CELL_SIZE);
+    fogOfWar = new FogOfWar(canvas, VISIBLE_RADIUS);
+    enemies = [];
+    food = [];
+    bullets = [];
+    score = 0;
+    keys = {};
+    maze = createMaze(ROWS, COLS);
 
-const keys = {};
-const maze = createMaze(ROWS, COLS);
+    initializeCustomControls(player, maze, COLS, ROWS, CELL_SIZE, shootHandler, switchWeapon, {
+        size: 80,
+        shootButtonColor: 'orange',
+        rifleButtonColor: 'purple',
+        shotgunButtonColor: 'teal',
+        spacing: 15,
+        fontSize: 16
+    });
 
-// Initialize the custom controls
-initializeCustomControls(player, maze, COLS, ROWS, CELL_SIZE, shootHandler, switchWeapon, {
-    size: 80, // Smaller buttons
-    shootButtonColor: 'orange', // Custom color for shoot button
-    rifleButtonColor: 'purple', // Custom color for rifle button
-    shotgunButtonColor: 'teal', // Custom color for shotgun button
-    spacing: 15, // More space between buttons
-    fontSize: 16 // Smaller font size
-});
+    scoreElement.textContent = score;
+    weaponElement.textContent = getCurrentWeapon();
+}
+
+function update() {
+    if (menu.isVisible) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawMaze(ctx, maze, ROWS, COLS, CELL_SIZE);
+    updatePlayerMovement(keys, player, maze, COLS, ROWS, CELL_SIZE);
+    player.draw(ctx);
+    player.drawAimPointer(ctx);
+    updateAndDrawBullets();
+    updateAndDrawEnemies();
+    drawFood(ctx, food);
+    score = checkFoodCollection(player, food, score);
+    scoreElement.textContent = score;
+    fogOfWar.create(player.x, player.y);
+    weaponElement.textContent = getCurrentWeapon();
+
+    requestAnimationFrame(update);
+}
 
 function drawCircle(x, y, radius, color) {
     ctx.beginPath();
@@ -48,42 +76,6 @@ function drawCircle(x, y, radius, color) {
     ctx.fillStyle = color;
     ctx.fill();
     ctx.closePath();
-}
-
-function update() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#333'; // Dark background
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    drawMaze(ctx, maze, ROWS, COLS, CELL_SIZE);
-
-    // Update player movement using keyboard controls
-    updatePlayerMovement(keys, player, maze, COLS, ROWS, CELL_SIZE);
-
-    // Draw player
-    player.draw(ctx);
-
-    // Draw aim pointer
-    player.drawAimPointer(ctx);
-
-    // Update and draw bullets
-    updateAndDrawBullets();
-
-    // Move and draw enemies
-    updateAndDrawEnemies();
-
-    // Draw and check food
-    drawFood(ctx, food);
-    score = checkFoodCollection(player, food, score);
-    scoreElement.textContent = score;
-
-    fogOfWar.create(player.x, player.y);
-
-    // Update weapon display
-    weaponElement.textContent = getCurrentWeapon();
-
-    requestAnimationFrame(update);
 }
 
 function updateAndDrawBullets() {
@@ -113,7 +105,6 @@ function updateAndDrawEnemies() {
 
         // Check collision with player
         if (enemy.collidesWith(player.x, player.y, player.radius)) {
-            alert('Game Over! Your score: ' + score);
             resetGame();
             return;
         }
@@ -133,12 +124,11 @@ function updateAndDrawEnemies() {
 }
 
 function resetGame() {
-    player.reset(CELL_SIZE * 1.5, CELL_SIZE * 1.5);
-    enemies.length = 0;
-    food.length = 0;
-    bullets.length = 0;
-    score = 0;
-    scoreElement.textContent = score;
+    menu.updateScore(score);
+    menu.show();
+    clearInterval(enemySpawnInterval);
+    clearInterval(foodSpawnInterval);
+    initializeGame();
 }
 
 function spawnEnemy() {
@@ -150,13 +140,19 @@ function shootHandler() {
     bullets.push(...newBullets);
 }
 
+let enemySpawnInterval;
+let foodSpawnInterval;
+
+menu.onStartGame(() => {
+    initializeGame();
+    menu.hide();
+    update();
+    enemySpawnInterval = setInterval(spawnEnemy, 3000);
+    foodSpawnInterval = setInterval(() => food.push(spawnFood(maze, COLS, ROWS, CELL_SIZE)), 2000);
+});
+
 document.addEventListener('keydown', (e) => handleKeyDown(e, keys, player, bullets, shoot, switchWeapon, weaponElement));
 document.addEventListener('keyup', (e) => handleKeyUp(e, keys));
-
-setInterval(spawnEnemy, 3000);
-setInterval(() => food.push(spawnFood(maze, COLS, ROWS, CELL_SIZE)), 2000);
-
-update();
 
 // Handle window resizing
 window.addEventListener('resize', () => {
@@ -164,3 +160,6 @@ window.addEventListener('resize', () => {
     canvas.height = window.innerHeight;
     // You might want to adjust other game elements based on the new size
 });
+
+// Show the menu initially
+menu.show();

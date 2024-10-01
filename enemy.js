@@ -4,6 +4,14 @@ export class Enemy {
         this.y = y;
         this.radius = cellSize / 3;
         this.speed = 0.5;
+
+        // Load the enemy image
+        this.image = new Image();
+        this.image.src = './enemy.png';  // Make sure this path is correct
+        this.imageLoaded = false;
+        this.image.onload = () => {
+            this.imageLoaded = true;
+        };
     }
 
     move(playerX, playerY, maze, COLS, ROWS, CELL_SIZE) {
@@ -21,11 +29,17 @@ export class Enemy {
     }
 
     draw(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.closePath();
+        if (this.imageLoaded) {
+            // Draw the enemy image
+            ctx.drawImage(this.image, this.x - this.radius, this.y - this.radius, this.radius * 3, this.radius * 3);
+        } else {
+            // Fallback to drawing a red circle if the image is not loaded
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+            ctx.closePath();
+        }
     }
 
     collidesWith(x, y, radius) {
