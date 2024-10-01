@@ -19,8 +19,15 @@ export class Menu {
         this.menuElement.style.textAlign = 'center';
         this.menuElement.style.color = 'white';
 
+        // Create and add the logo
+        const logoElement = document.createElement('img');
+        logoElement.src = './rumbologo.png';  // Make sure this path is correct
+        logoElement.style.width = '200px';  // Adjust size as needed
+        logoElement.style.marginBottom = '20px';
+        this.menuElement.appendChild(logoElement);
+
         const titleElement = document.createElement('h1');
-        titleElement.textContent = 'Rumbo Cat';
+        
         this.menuElement.appendChild(titleElement);
 
         this.scoreElement = document.createElement('p');
